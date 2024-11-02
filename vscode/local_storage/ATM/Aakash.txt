@@ -1,0 +1,17 @@
+balance: 1065901
+PIN: 30959
+
+History:
+An amount of 10 was withdrawn to Aakash on 13/10/2024 at 16:49:30
+An amount of 18574 was withdrawn to Aakash on 13/10/2024 at 16:51:00
+An amount of 174638 was withdrawn from Aakash on 13/10/2024 at 17:51:10
+An amount of 142341 was credited to Aakash on 13/10/2024 at 17:51:19
+An amount of 109284 was transferred from Aakash to jyothiiii on 13/10/2024 at 17:51:46
+An amount of 10543 was withdrawn from Aakash on 13/10/2024 at 18:49:12
+An amount of 15423 was withdrawn from Aakash on 14/10/2024 at 13:25:16
+An amount of 10 was withdrawn from Aakash on 14/10/2024 at 13:28:20
+An amount of 0 was withdrawn from Aakash on 14/10/2024 at 14:24:24
+An amount of 409385 was credited to Aakash on 14/10/2024 at 14:24:32
+An amount of 10923 was transferred from Aakash to jyothiiii on 14/10/2024 at 14:30:39
+An amount of 0 was withdrawn from Aakash on 14/10/2024 at 14:34:05
+An amount of 10943 was transferred from Aakash to jyothiiii on 14/10/2024 at 14:34:28
