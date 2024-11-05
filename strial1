@@ -1,0 +1,44 @@
+#include<stdio.h>
+
+struct student
+{
+    char sid[50];
+    char sname[50];
+    char gender;
+    char city[32];
+    char dob[32];
+    long long phonenumber;
+}
+;
+
+struct student si;
+
+int main() {
+    printf("Enter the student's ID: ");
+    scanf("%s", si.sid);
+
+    printf("Enter the student's name: ");
+    scanf("%s", si.sname);
+
+    printf("Enter the student's gender (M/F): ");
+    scanf(" %c", &si.gender);
+
+    printf("Enter the student's city: ");
+    scanf("%s", si.city);
+
+    printf("Enter the student's date of birth (DD/MM/YYYY):");
+    scanf("%s", si.dob);
+
+    printf("Enter the student's phone number: ");
+    scanf("%lld", &si.phonenumber);
+
+    printf("\nStudent Details:\n");
+    printf("ID: %c\n", si.sid);
+    printf("Name: %s\n", si.sname);
+    printf("Gender: %c\n", si.gender);
+    printf("City: %s\n", si.city);
+    printf("Date of Birth: %s\n", si.dob);
+    printf("Phone Number: %lld\n", si.phonenumber);
+
+    return 0;
+}
