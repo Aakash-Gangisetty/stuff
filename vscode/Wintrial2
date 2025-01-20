@@ -1,0 +1,232 @@
+#include <windows.h>
+#include <stdio.h>
+#include <time.h>
+
+#define MAX_PATH_LENGTH 260
+
+// Global variables for window handles and other data
+HWND hwndUsername, hwndPIN, hwndBalance, hwndWithdrawAmount, hwndTransferAmount, hwndMessage;
+HINSTANCE hInst;
+LPCSTR szWindowClass = "ATMApp";
+
+// ATM logic variables
+char user_name[100];
+int PIN, user_given_pin, balance;
+FILE *file;
+FILE *userFile;
+char userFileName[MAX_PATH_LENGTH];
+
+// History related
+FILE *historyFile;
+char historyFileName[MAX_PATH_LENGTH];
+
+// Function declarations
+LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
+void RegisterWindowClass(HINSTANCE);
+void CreateAppWindow(HINSTANCE, int);
+void ShowMessageBox(const char* message, const char* title);
+void UpdateBalance(int newBalance);
+void WithdrawMoney(HWND hwnd);
+void CreditMoney(HWND hwnd);
+void TransferMoney(HWND hwnd);
+void SaveHistory(const char* action);
+
+// File handling functions
+void SaveUserData();
+void LoadUserData();
+
+// Windows message loop and procedure
+LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
+    switch (msg) {
+        case WM_CREATE:
+            // Create controls (buttons, textboxes)
+            CreateWindow("STATIC", "Enter Username:", WS_VISIBLE | WS_CHILD, 10, 10, 200, 20, hwnd, NULL, hInst, NULL);
+            hwndUsername = CreateWindow("EDIT", "", WS_VISIBLE | WS_CHILD | WS_BORDER, 10, 40, 200, 25, hwnd, NULL, hInst, NULL);
+
+            CreateWindow("STATIC", "Enter PIN:", WS_VISIBLE | WS_CHILD, 10, 80, 200, 20, hwnd, NULL, hInst, NULL);
+            hwndPIN = CreateWindow("EDIT", "", WS_VISIBLE | WS_CHILD | WS_BORDER | ES_PASSWORD, 10, 110, 200, 25, hwnd, NULL, hInst, NULL);
+
+            hwndBalance = CreateWindow("STATIC", "Balance: $0", WS_VISIBLE | WS_CHILD, 10, 150, 250, 20, hwnd, NULL, hInst, NULL);
+
+            CreateWindow("STATIC", "Enter Withdraw Amount:", WS_VISIBLE | WS_CHILD, 10, 190, 200, 20, hwnd, NULL, hInst, NULL);
+            hwndWithdrawAmount = CreateWindow("EDIT", "", WS_VISIBLE | WS_CHILD | WS_BORDER, 10, 220, 200, 25, hwnd, NULL, hInst, NULL);
+
+            // Withdraw, Credit, and Transfer Buttons
+            CreateWindow("BUTTON", "Withdraw", WS_VISIBLE | WS_CHILD, 10, 260, 100, 30, hwnd, (HMENU)1, hInst, NULL);
+            CreateWindow("BUTTON", "Credit", WS_VISIBLE | WS_CHILD, 120, 260, 100, 30, hwnd, (HMENU)2, hInst, NULL);
+            CreateWindow("BUTTON", "Transfer", WS_VISIBLE | WS_CHILD, 10, 300, 100, 30, hwnd, (HMENU)3, hInst, NULL);
+
+            // Transfer related inputs
+            CreateWindow("STATIC", "Transfer Amount:", WS_VISIBLE | WS_CHILD, 10, 340, 200, 20, hwnd, NULL, hInst, NULL);
+            hwndTransferAmount = CreateWindow("EDIT", "", WS_VISIBLE | WS_CHILD | WS_BORDER, 10, 370, 200, 25, hwnd, NULL, hInst, NULL);
+
+            break;
+        
+        case WM_COMMAND:
+            if (LOWORD(wp) == 1) {
+                WithdrawMoney(hwnd); // Withdraw button
+            } else if (LOWORD(wp) == 2) {
+                CreditMoney(hwnd); // Credit button
+            } else if (LOWORD(wp) == 3) {
+                TransferMoney(hwnd); // Transfer button
+            }
+            break;
+
+        case WM_DESTROY:
+            SaveUserData();  // Save user data on exit
+            PostQuitMessage(0);
+            break;
+        
+        default:
+            return DefWindowProc(hwnd, msg, wp, lp);
+    }
+    return 0;
+}
+
+// Show message in a MessageBox
+void ShowMessageBox(const char* message, const char* title) {
+    MessageBox(NULL, message, title, MB_OK | MB_ICONINFORMATION);
+}
+
+// Update balance on the window
+void UpdateBalance(int newBalance) {
+    balance = newBalance;
+    char balanceText[100];
+    sprintf(balanceText, "Your current balance is: $%d", balance);
+    SetWindowText(hwndBalance, balanceText);
+}
+
+// Handle withdrawal logic
+void WithdrawMoney(HWND hwnd) {
+    char withdrawText[100];
+    GetWindowText(hwndWithdrawAmount, withdrawText, sizeof(withdrawText));
+    int withdraw = atoi(withdrawText);
+    
+    if (withdraw > balance) {
+        ShowMessageBox("Insufficient funds!", "Error");
+    } else {
+        balance -= withdraw;
+        UpdateBalance(balance);
+        ShowMessageBox("Withdrawal successful!", "Success");
+        SaveHistory("Withdrawal");
+    }
+}
+
+// Handle credit logic
+void CreditMoney(HWND hwnd) {
+    char creditText[100];
+    GetWindowText(hwndWithdrawAmount, creditText, sizeof(creditText));
+    int credit = atoi(creditText);
+
+    balance += credit;
+    UpdateBalance(balance);
+    ShowMessageBox("Credit successful!", "Success");
+    SaveHistory("Credit");
+}
+
+// Handle transfer logic
+void TransferMoney(HWND hwnd) {
+    char transferText[100];
+    GetWindowText(hwndTransferAmount, transferText, sizeof(transferText));
+    int transferAmount = atoi(transferText);
+
+    if (transferAmount > balance) {
+        ShowMessageBox("Insufficient funds for transfer.", "Error");
+    } else {
+        balance -= transferAmount;
+        UpdateBalance(balance);
+        ShowMessageBox("Transfer successful!", "Success");
+        SaveHistory("Transfer");
+    }
+}
+
+// Save user transaction history to file
+void SaveHistory(const char* action) {
+    historyFile = fopen(historyFileName, "a");
+    if (historyFile != NULL) {
+        time_t t;
+        struct tm *tm_info;
+        char timeStr[26];
+        time(&t);
+        tm_info = localtime(&t);
+        strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", tm_info);
+        
+        fprintf(historyFile, "[%s] %s: $%d\n", timeStr, action, balance);
+        fclose(historyFile);
+    }
+}
+
+// Load user data from file
+void LoadUserData() {
+    userFile = fopen(userFileName, "r");
+    if (userFile != NULL) {
+        fscanf(userFile, "%s %d %d", user_name, &PIN, &balance);
+        fclose(userFile);
+    }
+    
+    // Load history file
+    historyFile = fopen(historyFileName, "a+");
+    if (historyFile == NULL) {
+        historyFile = fopen(historyFileName, "w");
+        fclose(historyFile);
+    }
+}
+
+// Save user data to file
+void SaveUserData() {
+    userFile = fopen(userFileName, "w");
+    if (userFile != NULL) {
+        fprintf(userFile, "%s %d %d\n", user_name, PIN, balance);
+        fclose(userFile);
+    }
+}
+
+// Register window class
+void RegisterWindowClass(HINSTANCE hInstance) {
+    WNDCLASS wc = {0};
+    wc.lpfnWndProc = WndProc;
+    wc.hInstance = hInstance;
+    wc.lpszClassName = szWindowClass;
+    RegisterClass(&wc);
+}
+
+// Create window and initialize message loop
+void CreateAppWindow(HINSTANCE hInstance, int nCmdShow) {
+    HWND hwnd = CreateWindowEx(
+        0, szWindowClass, "ATM - Bank Simulation", WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT, CW_USEDEFAULT, 400, 500,
+        NULL, NULL, hInstance, NULL);
+    
+    if (hwnd) {
+        ShowWindow(hwnd, nCmdShow);
+        UpdateWindow(hwnd);
+        
+        // Message loop
+        MSG msg;
+        while (GetMessage(&msg, NULL, 0, 0)) {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+    }
+}
+
+// Main function
+int main(int argc, char* argv[]) {
+    HINSTANCE hInstance = GetModuleHandle(NULL);
+    hInst = hInstance;
+
+    // Ask user for username
+    printf("Enter username: ");
+    scanf("%s", user_name);
+    
+    // Set the filename based on username
+    snprintf(userFileName, MAX_PATH_LENGTH, "%s.txt", user_name);
+    snprintf(historyFileName, MAX_PATH_LENGTH, "_%s_history.txt", user_name);
+    
+    LoadUserData();  // Load existing user data
+    
+    RegisterWindowClass(hInstance);
+    CreateAppWindow(hInstance, argc);
+
+    return 0;
+}
