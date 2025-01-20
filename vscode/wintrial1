@@ -1,0 +1,159 @@
+#include <windows.h>
+#include <stdio.h>
+#include <time.h>
+
+#define MAX_PATH_LENGTH 260
+
+// Global variables for window handles and other data
+HWND hwndUsername, hwndPIN, hwndBalance, hwndWithdrawAmount, hwndTransferAmount, hwndMessage;
+HINSTANCE hInst;
+LPCSTR szWindowClass = "ATMApp";
+
+// Function declarations
+LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
+void RegisterWindowClass(HINSTANCE);
+void CreateAppWindow(HINSTANCE, int);
+
+// ATM logic variables
+char user_name[100];
+int PIN, user_given_pin, balance;
+FILE *file;
+
+void ShowMessageBox(const char* message, const char* title) {
+    MessageBox(NULL, message, title, MB_OK | MB_ICONINFORMATION);
+}
+
+void UpdateBalance(int newBalance) {
+    balance = newBalance;
+    char balanceText[100];
+    sprintf(balanceText, "Your current balance is: %d", balance);
+    SetWindowText(hwndBalance, balanceText);
+}
+
+void WithdrawMoney(HWND hwnd) {
+    char withdrawText[100];
+    GetWindowText(hwndWithdrawAmount, withdrawText, sizeof(withdrawText));
+    int withdraw = atoi(withdrawText);
+    
+    if (withdraw > balance) {
+        ShowMessageBox("Insufficient funds!", "Error");
+    } else {
+        balance -= withdraw;
+        UpdateBalance(balance);
+        ShowMessageBox("Withdrawal successful!", "Success");
+    }
+}
+
+void CreditMoney(HWND hwnd) {
+    char creditText[100];
+    GetWindowText(hwndWithdrawAmount, creditText, sizeof(creditText));
+    int credit = atoi(creditText);
+
+    balance += credit;
+    UpdateBalance(balance);
+    ShowMessageBox("Credit successful!", "Success");
+}
+
+void TransferMoney(HWND hwnd) {
+    char transferText[100], transferAcc[100], transferFile[MAX_PATH_LENGTH];
+    GetWindowText(hwndTransferAmount, transferText, sizeof(transferText));
+    int transferAmount = atoi(transferText);
+
+    // You would normally do proper file handling here to verify the transfer
+    // In this example, we are just doing a simple check
+
+    if (transferAmount > balance) {
+        ShowMessageBox("Insufficient funds for transfer.", "Error");
+    } else {
+        balance -= transferAmount;
+        UpdateBalance(balance);
+        ShowMessageBox("Transfer successful!", "Success");
+    }
+}
+
+// Windows message loop and procedure
+LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
+    switch (msg) {
+        case WM_CREATE:
+            // Create controls (buttons, textboxes)
+            CreateWindow("STATIC", "Enter Username:", WS_VISIBLE | WS_CHILD, 10, 10, 200, 20, hwnd, NULL, hInst, NULL);
+            hwndUsername = CreateWindow("EDIT", "", WS_VISIBLE | WS_CHILD | WS_BORDER, 10, 40, 200, 25, hwnd, NULL, hInst, NULL);
+
+            CreateWindow("STATIC", "Enter PIN:", WS_VISIBLE | WS_CHILD, 10, 80, 200, 20, hwnd, NULL, hInst, NULL);
+            hwndPIN = CreateWindow("EDIT", "", WS_VISIBLE | WS_CHILD | WS_BORDER | ES_PASSWORD, 10, 110, 200, 25, hwnd, NULL, hInst, NULL);
+
+            hwndBalance = CreateWindow("STATIC", "Balance: $0", WS_VISIBLE | WS_CHILD, 10, 150, 250, 20, hwnd, NULL, hInst, NULL);
+
+            CreateWindow("STATIC", "Enter Withdraw Amount:", WS_VISIBLE | WS_CHILD, 10, 190, 200, 20, hwnd, NULL, hInst, NULL);
+            hwndWithdrawAmount = CreateWindow("EDIT", "", WS_VISIBLE | WS_CHILD | WS_BORDER, 10, 220, 200, 25, hwnd, NULL, hInst, NULL);
+
+            // Withdraw, Credit, and Transfer Buttons
+            CreateWindow("BUTTON", "Withdraw", WS_VISIBLE | WS_CHILD, 10, 260, 100, 30, hwnd, (HMENU)1, hInst, NULL);
+            CreateWindow("BUTTON", "Credit", WS_VISIBLE | WS_CHILD, 120, 260, 100, 30, hwnd, (HMENU)2, hInst, NULL);
+            CreateWindow("BUTTON", "Transfer", WS_VISIBLE | WS_CHILD, 10, 300, 100, 30, hwnd, (HMENU)3, hInst, NULL);
+
+            // Transfer related inputs
+            CreateWindow("STATIC", "Transfer Amount:", WS_VISIBLE | WS_CHILD, 10, 340, 200, 20, hwnd, NULL, hInst, NULL);
+            hwndTransferAmount = CreateWindow("EDIT", "", WS_VISIBLE | WS_CHILD | WS_BORDER, 10, 370, 200, 25, hwnd, NULL, hInst, NULL);
+
+            break;
+        
+        case WM_COMMAND:
+            if (LOWORD(wp) == 1) {
+                WithdrawMoney(hwnd); // Withdraw button
+            } else if (LOWORD(wp) == 2) {
+                CreditMoney(hwnd); // Credit button
+            } else if (LOWORD(wp) == 3) {
+                TransferMoney(hwnd); // Transfer button
+            }
+            break;
+
+        case WM_DESTROY:
+            PostQuitMessage(0);
+            break;
+        
+        default:
+            return DefWindowProc(hwnd, msg, wp, lp);
+    }
+    return 0;
+}
+
+// Main function
+int main(int argc, char* argv[]) {
+    HINSTANCE hInstance = GetModuleHandle(NULL);
+    hInst = hInstance;
+
+    RegisterWindowClass(hInstance);
+    CreateAppWindow(hInstance, argc);
+
+    return 0;
+}
+
+// Register window class
+void RegisterWindowClass(HINSTANCE hInstance) {
+    WNDCLASS wc = {0};
+    wc.lpfnWndProc = WndProc;
+    wc.hInstance = hInstance;
+    wc.lpszClassName = szWindowClass;
+    RegisterClass(&wc);
+}
+
+// Create window and initialize message loop
+void CreateAppWindow(HINSTANCE hInstance, int nCmdShow) {
+    HWND hwnd = CreateWindowEx(
+        0, szWindowClass, "ATM - Bank Simulation", WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT, CW_USEDEFAULT, 400, 500,
+        NULL, NULL, hInstance, NULL);
+    
+    if (hwnd) {
+        ShowWindow(hwnd, nCmdShow);
+        UpdateWindow(hwnd);
+        
+        // Message loop
+        MSG msg;
+        while (GetMessage(&msg, NULL, 0, 0)) {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+    }
+}
