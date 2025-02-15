@@ -1,0 +1,1 @@
+a=int(input("Enter the number you would like to check if it is a sstrong number or not "))
